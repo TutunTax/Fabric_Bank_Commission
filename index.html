@@ -1,0 +1,1897 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fabric Bank Commissions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--navy:#24364a;--ink:#1d2733;--muted:#687581;--line:#dfe5e9;--bg:#f4f6f7;--accent:#c58b36;--ok:#2f7d57;--danger:#b53b3b;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  header{background:var(--navy);color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  header h1{margin:0;font-size:22px}
+  header .small{opacity:.8;font-size:12px}
+  .wrap{max-width:1500px;margin:auto;padding:22px}
+  .nav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .nav button{border:1px solid var(--line);background:#fff;padding:10px 15px;border-radius:8px;cursor:pointer;font-weight:700;color:var(--ink)}
+  .nav button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px;box-shadow:0 1px 2px #0000000a}
+  .hidden{display:none!important}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th{background:#eef1f3;padding:9px 7px;text-align:left;font-size:10px;text-transform:uppercase;position:sticky;top:0}
+  td{border-top:1px solid var(--line);padding:7px;vertical-align:top;font-size:12px;line-height:1.35;overflow-wrap:break-word}
+  input[type=text],input[type=password],input[type=number],input[type=file],select,textarea{width:100%;border:1px solid #cbd3d9;border-radius:6px;padding:6px 8px;font:inherit;background:#fff}
+  .btn{border:1px solid #cbd3d9;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:700}
+  .btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .btn.danger{color:#fff;background:var(--danger);border-color:var(--danger)}
+  .btn.warn{background:#fff3df;border-color:#e7c991}
+  .btn.approve{background:var(--ok);color:#fff;border-color:var(--ok)}
+  .btn.small{padding:5px 9px;font-size:11px}
+  .ruleCell{display:flex;flex-direction:column;gap:4px;min-width:150px}
+  .ruleCell label{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+  .ruleRow{display:flex;gap:5px}
+  .ruleRow input{width:70px}
+  .toast{position:fixed;right:20px;bottom:20px;background:#1f2d3b;color:#fff;padding:12px 16px;border-radius:8px;display:none;z-index:50}
+  .empty{padding:30px;text-align:center;color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+  .modalbox{background:#fff;border-radius:12px;width:min(700px,100%);max-height:92vh;overflow:auto;padding:20px}
+  .modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase}
+  .status{font-size:12px;color:var(--muted);margin-top:8px}
+  .periodList{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .periodChip{border:1px solid var(--line);border-radius:999px;padding:7px 13px;background:#fff;cursor:pointer;font-weight:700;font-size:12px}
+  .periodChip.selected{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .pending{color:#8b5a00;background:#fff3d6;border:1px solid #efd59d;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800}
+  .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:9px;max-height:70vh}
+  .col-invoice{width:80px}.col-date{width:90px}.col-customer{width:150px}.col-product{width:150px}.col-desc{width:100%}.col-metres{width:70px}.col-category{width:110px}.col-employee{width:170px}.col-split{width:60px}.col-delete{width:60px}.col-transfer{width:110px}.col-approve{width:80px}.col-approval{width:150px}
+  .num{text-align:right;white-space:nowrap}
+  .inlineWho{position:relative;display:inline-block;width:100%}
+  .inlineWho summary{list-style:none;cursor:pointer;border:1px solid #cbd3d9;border-radius:6px;padding:6px 8px;background:#fff;font-size:11px;font-weight:700;overflow-wrap:break-word}
+  .inlineWho summary::-webkit-details-marker{display:none}
+  .whoMenu{position:absolute;left:0;top:32px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;box-shadow:0 6px 18px #0002;z-index:30;min-width:150px}
+  .whoMenu label{display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;color:var(--ink);margin:0;padding:4px;border-radius:5px}
+  .whoMenu label:hover{background:#f2f4f5}
+  .whoMenu input{width:auto}
+  .whoMenu .noOneOpt{border-top:1px solid var(--line);margin-top:4px;padding-top:8px}
+  .assignedRow td{background:#f4faf6}
+  .approvedRow td{background:#eef7ee}
+  .catSelect{font-size:12px;padding:5px 6px}
+  .flash-ok{outline:2px solid var(--ok);outline-offset:-1px;transition:outline-color .5s}
+  .approvalBadge{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px}
+  .approvalBadge.yes{background:#e4f4e8;color:var(--ok)}
+  .approvalBadge.no{background:#f1f1f1;color:var(--muted)}
+  .splitRow{border:1px solid var(--line);border-radius:9px;padding:10px;margin-top:10px}
+  .splitItems{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .splitItem{border:1px solid #ccd4da;border-radius:7px;padding:7px;background:#fafbfb;font-size:12px}
+  .splitEmployees{display:flex;flex-wrap:wrap;gap:6px}
+  .splitEmp{display:inline-flex;align-items:center;gap:5px;border:1px solid #ccd4da;border-radius:7px;padding:5px 9px;background:#fafbfb;font-size:12px;font-weight:400;text-transform:none;color:var(--ink);margin:0;cursor:pointer}
+  .splitEmp input{width:auto}
+  .splitEmp.noOneOpt{border-style:dashed}
+  .linebox{border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:6px;font-size:12px}
+  @media(max-width:900px){.wrap{padding:12px}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>FABRIC BANK COMMISSIONS</h1>
+    <div class="small">Commission management &amp; reporting</div>
+  </div>
+  <div id="userBox" class="hidden" style="font-size:12px;display:flex;align-items:center;gap:10px">
+    <span id="userEmail"></span>
+    <button class="btn small" onclick="signOut()">Sign out</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="nav">
+    <button id="navApprovalHome" class="active" onclick="showTab('approvalHome')">Commissions for Approval <span id="toApproveBadge" class="pending">0</span></button>
+    <button id="navPeriods" class="adminOnly" onclick="showTab('periods')">Commission Periods</button>
+    <button id="navData" class="adminOnly" onclick="showTab('data')">Commission Data <span id="pendingBadge" class="pending">0</span></button>
+    <button id="navEmployees" class="adminOnly" onclick="showTab('employees')">Employees</button>
+    <button id="navStructure" class="adminOnly" onclick="showTab('structure')">Commission Structure</button>
+    <button id="navReports" class="adminOnly" onclick="showTab('reports')">Reports</button>
+  </div>
+
+  <!-- HOME: client-facing approval queue -->
+  <section id="tab-approvalHome">
+    <div class="panel">
+      <h2>Commissions for Approval</h2>
+      <p style="color:var(--muted);font-size:13px">Choose the category and who gets commission, then tap the green tick to approve. Approved lines drop off this list. Use Split if one invoice covers more than one category, or needs to be shared between employees.</p>
+      <div class="grid2">
+        <div><label>Commission period</label><select id="homeMonth" onchange="loadApprovalHome()"></select></div>
+        <div><label>Search</label><input type="text" id="homeSearch" placeholder="Invoice, customer, product..." oninput="renderApprovalHome()"></div>
+      </div>
+      <div class="adminOnly" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="exportSheetBtn" onclick="exportApprovalSheet()">Export approval sheet for client</button>
+        <button class="btn" onclick="openSheetImport()">Import completed sheet</button>
+      </div>
+      <div id="exportStatus" class="status"></div>
+    </div>
+    <div class="panel">
+      <div class="tablewrap">
+        <table>
+          <colgroup>
+            <col class="col-invoice"><col class="col-date"><col class="col-customer"><col class="col-product"><col class="col-desc"><col class="col-metres"><col class="col-category"><col class="col-employee"><col class="col-split"><col class="col-transfer"><col class="col-approve">
+          </colgroup>
+          <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Product/Service</th><th>Description</th><th>Metres</th><th>Category</th><th>Employee</th><th>Split</th><th>Transfer</th><th>Approve</th></tr></thead>
+          <tbody id="homeBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-periods" class="hidden">
+    <div class="panel">
+      <h2>Commission Periods</h2>
+      <p style="color:var(--muted);font-size:13px">Each period is a month you run commission for. Create a period, then import that month's QuickBooks report into it.</p>
+      <div id="periodList" class="periodList"></div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="openPeriodCreator()">+ New period</button>
+        <button class="btn primary" id="importBtn" onclick="openImport()" disabled>Import QBO into selected period</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 id="previewTitle">Raw data preview</h2>
+      <p id="previewEmpty" class="empty">Select a period above to preview its imported rows.</p>
+      <div id="previewWrap" class="hidden" style="overflow:auto">
+        <table>
+          <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Metres</th></tr></thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-data" class="hidden">
+    <div class="panel">
+      <h2>Commission Data</h2>
+      <p style="color:var(--muted);font-size:13px">Every transaction for the period stays here — assigned, approved, or not — so you can change a category, employee, move it to another period, or delete a line at any time. The badge counts transactions that still need an employee assigned.</p>
+      <div class="grid2">
+        <div><label>Commission period</label><select id="approvalMonth" onchange="loadApproval()"></select></div>
+        <div><label>Search</label><input type="text" id="approvalSearch" placeholder="Invoice, customer, product..." oninput="renderApproval()"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="tablewrap">
+        <table>
+          <colgroup>
+            <col class="col-invoice"><col class="col-date"><col class="col-customer"><col class="col-product"><col class="col-desc"><col class="col-metres"><col class="col-category"><col class="col-employee"><col class="col-split"><col class="col-approval"><col class="col-delete">
+          </colgroup>
+          <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Product/Service</th><th>Description</th><th>Metres</th><th>Category</th><th>Employee</th><th>Split / Move</th><th>Approval</th><th>Delete</th></tr></thead>
+          <tbody id="approvalBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-employees" class="hidden">
+    <div class="panel">
+      <h2>Employees</h2>
+      <p style="color:var(--muted);font-size:13px">Add each person who can earn commission. Untick "Active" to hide someone without deleting their history.</p>
+      <table>
+        <thead><tr><th>Name</th><th>Active</th><th></th></tr></thead>
+        <tbody id="employeeBody"></tbody>
+      </table>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="addEmployeeRow()">+ Add employee</button>
+      </div>
+    </div>
+    <button class="btn primary" onclick="saveEmployees()">Save employees</button>
+  </section>
+
+  <section id="tab-structure" class="hidden">
+    <div class="panel">
+      <h2>Commission Structure</h2>
+      <p style="color:var(--muted);font-size:13px">For each employee and category, tick "Eligible" to let them earn commission there, then set the threshold (metres before commission kicks in) and rate (R per metre).</p>
+      <table>
+        <thead><tr><th>Employee</th><th>Decor</th><th>Fashion</th><th>Wallpaper</th></tr></thead>
+        <tbody id="structureBody"></tbody>
+      </table>
+    </div>
+    <button class="btn primary" onclick="saveEmployees()">Save commission structure</button>
+  </section>
+
+  <section id="tab-reports" class="hidden">
+    <div class="panel">
+      <h2>Reports</h2>
+      <p style="color:var(--muted);font-size:13px">Pick a period and an employee to see their commission breakdown, then generate a PDF.</p>
+      <div class="grid2">
+        <div><label>Commission period</label><select id="reportMonth" onchange="loadReport()"></select></div>
+        <div><label>Employee</label><select id="reportEmployee" onchange="loadReport()"></select></div>
+      </div>
+      <div style="margin-top:14px"><button class="btn primary" id="pdfBtn" onclick="generatePdf()" disabled>Generate PDF</button></div>
+      <div id="pdfStatus" class="status"></div>
+    </div>
+    <div class="panel">
+      <div id="reportBody"><p class="empty">Choose a period and employee above.</p></div>
+    </div>
+  </section>
+</div>
+
+<!-- Sign in -->
+<div id="loginModal" class="modal hidden">
+  <div class="modalbox" style="width:min(400px,100%)">
+    <div class="modalhead"><h3 style="margin:0">Sign in</h3></div>
+    <label>Email</label>
+    <input type="text" id="loginEmail" autocomplete="username">
+    <label style="margin-top:12px">Password</label>
+    <input type="password" id="loginPassword" autocomplete="current-password" onkeydown="if(event.key==='Enter') signIn()">
+    <div style="margin-top:16px;text-align:right"><button class="btn primary" id="loginBtn" onclick="signIn()">Sign in</button></div>
+    <div id="loginStatus" class="status"></div>
+  </div>
+</div>
+
+<!-- New period modal -->
+<div id="periodModal" class="modal hidden">
+  <div class="modalbox" style="width:min(520px,100%)">
+    <div class="modalhead"><h3>New commission period</h3><button class="btn" onclick="closePeriodCreator()">Close</button></div>
+    <div class="grid2">
+      <div><label>Month</label><select id="newPeriodMonth"></select></div>
+      <div><label>Year</label><select id="newPeriodYear"></select></div>
+    </div>
+    <div style="margin-top:16px;text-align:right"><button class="btn primary" onclick="createPeriod()">Create period</button></div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div id="importModal" class="modal hidden">
+  <div class="modalbox" style="width:min(520px,100%)">
+    <div class="modalhead"><h3>Import QBO report</h3><button class="btn" onclick="closeImport()">Close</button></div>
+    <label>Importing into</label>
+    <p id="importMonthLabel" style="font-weight:700;margin-top:0"></p>
+    <label>QBO export file (CSV or Excel)</label>
+    <input type="file" id="qboFile" accept=".csv,.xlsx,.xls">
+    <div style="margin-top:16px;text-align:right"><button class="btn primary" onclick="processImport()">Import</button></div>
+    <div id="importStatus" class="status"></div>
+  </div>
+</div>
+
+<!-- Split modal -->
+<div id="splitModal" class="modal hidden">
+  <div class="modalbox">
+    <div class="modalhead"><h3>Split transaction</h3><button class="btn" onclick="closeSplit()">Close</button></div>
+    <p class="status" id="splitIntro"></p>
+    <div id="splitLines"></div>
+    <div id="splitRows"></div>
+    <div style="margin-top:15px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="addSplitRow()">+ Add split</button>
+      <button class="btn primary" onclick="saveSplit()">Save splits</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move modal -->
+<div id="moveModal" class="modal hidden">
+  <div class="modalbox" style="width:min(520px,100%)">
+    <div class="modalhead"><h3>Move transaction to another period</h3><button class="btn" onclick="closeMove()">Close</button></div>
+    <p class="status" id="moveIntro"></p>
+    <label>Move to an existing period</label>
+    <select id="moveExistingPeriod"><option value="">— choose —</option></select>
+    <div style="margin:14px 0;text-align:center;color:var(--muted);font-size:12px">— or —</div>
+    <label>Create a new period to move it to</label>
+    <div class="grid2">
+      <div><select id="moveNewMonth"></select></div>
+      <div><select id="moveNewYear"></select></div>
+    </div>
+    <div style="margin-top:16px;text-align:right"><button class="btn primary" onclick="confirmMove()">Move transaction</button></div>
+    <div id="moveStatus" class="status"></div>
+  </div>
+</div>
+
+<!-- Completed approval sheet modal -->
+<div id="sheetImportModal" class="modal hidden">
+  <div class="modalbox" style="width:min(560px,100%)">
+    <div class="modalhead"><h3>Import completed approval sheet</h3><button class="btn" onclick="closeSheetImport()">Close</button></div>
+    <label>Reading choices back into</label>
+    <p id="sheetImportMonth" style="font-weight:700;margin-top:0"></p>
+    <label>Completed sheet (Excel or CSV)</label>
+    <input type="file" id="sheetImportFile" accept=".xlsx,.xls,.csv">
+    <div style="margin-top:16px;text-align:right"><button class="btn primary" onclick="processSheetImport()">Import choices</button></div>
+    <div id="sheetImportStatus" class="status"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* =========================================================
+   Supabase connection — fill these in from
+   Project Settings > API (the anon key is safe to publish;
+   the row level security in schema.sql protects the data).
+   ========================================================= */
+const SUPABASE_URL = 'https://fpqxnvsqqjdrlrsgfmsl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_PEwEUKSi8b96w8BfDrGPTg_cs5Q5HFN';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CATEGORIES = ['Decor', 'Fashion', 'Wallpaper'];
+const DEFAULT_RATES = { Decor: 10, Fashion: 5, Wallpaper: 10 };
+const DEFAULT_THRESHOLDS = { Decor: 300, Fashion: 300, Wallpaper: 150 };
+const DATA_HEADERS = ['Number', 'Transaction date', 'Customer', 'Product/Service full name', 'Memo/Description', 'Metres', 'Category', 'Who Gets Commission', 'Comments'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_RE = /^(January|February|March|April|May|June|July|August|September|October|November|December) 20\d{2}$/;
+
+/* =========================================================
+   Data layer (replaces the Apps Script server functions;
+   same names and return shapes the page already used)
+   ========================================================= */
+let SAVED_CFG = [];
+
+function unwrap(res){
+  if(res.error) throw new Error(res.error.message || String(res.error));
+  return res.data;
+}
+async function fetchAll(build){
+  const out = [], size = 1000;
+  for(let from = 0; ; from += size){
+    const data = unwrap(await build(from, from + size - 1));
+    out.push(...data);
+    if(data.length < size) break;
+  }
+  return out;
+}
+function monthSheetName(month){
+  if(!MONTH_RE.test(month || '')) throw new Error('Invalid month/year');
+  return month;
+}
+function nextMonthName(month){
+  monthSheetName(month);
+  const parts = String(month).trim().split(/\s+/);
+  let idx = MONTH_NAMES.indexOf(parts[0]);
+  let year = Number(parts[1]);
+  idx += 1;
+  if(idx > 11){ idx = 0; year += 1; }
+  return MONTH_NAMES[idx] + ' ' + year;
+}
+function round2(n){ return Math.round((Number(n) || 0) * 100) / 100; }
+
+async function getEmployeeConfig(){
+  const [emps, rules] = await Promise.all([
+    sb.from('employees').select('id,name,active,sort_order').order('sort_order'),
+    sb.from('commission_rules').select('employee_id,category,enabled,threshold,rate'),
+  ]);
+  const employees = unwrap(emps), ruleRows = unwrap(rules);
+  const byEmp = {};
+  ruleRows.forEach(r => {
+    if(!byEmp[r.employee_id]) byEmp[r.employee_id] = {};
+    byEmp[r.employee_id][r.category] = { enabled: r.enabled === true, threshold: Number(r.threshold), rate: Number(r.rate) };
+  });
+  SAVED_CFG = employees.map(e => {
+    const categories = {};
+    CATEGORIES.forEach(cat => {
+      categories[cat] = (byEmp[e.id] && byEmp[e.id][cat]) || { enabled: true, threshold: DEFAULT_THRESHOLDS[cat], rate: DEFAULT_RATES[cat] };
+    });
+    return { name: e.name, active: e.active !== false, categories };
+  });
+  return SAVED_CFG;
+}
+function employeeCanCategory(cfg, employee, category){
+  const e = cfg.find(x => x.name === employee);
+  return !!(e && e.categories[category] && e.categories[category].enabled);
+}
+async function listMonths(){
+  return unwrap(await sb.from('periods').select('name').order('period_date', { ascending: false })).map(x => x.name);
+}
+async function getPeriod(month){
+  return unwrap(await sb.from('periods').select('id,name').eq('name', monthSheetName(month)).maybeSingle());
+}
+function rowFromDb(r){
+  return {
+    row: r.id,
+    number: String(r.number || ''),
+    date: r.txn_date || '',
+    customer: String(r.customer || ''),
+    product: String(r.product || ''),
+    description: String(r.description || ''),
+    metres: Number(r.metres) || 0,
+    category: String(r.category || ''),
+    who: String(r.who || ''),
+    comments: String(r.comments || ''),
+    sourceLines: Array.isArray(r.source_lines) ? r.source_lines : [],
+    approved: r.approved === true,
+  };
+}
+async function periodRows(periodId){
+  const rows = await fetchAll((a, b) => sb.from('transactions').select('*').eq('period_id', periodId).order('seq').range(a, b));
+  return rows.map(rowFromDb);
+}
+function invoiceSortKey(n){
+  const m = String(n || '').match(/(\d+)\s*$/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+function sortInvoiceRows(rows){
+  return rows.sort((a, b) => {
+    const ka = invoiceSortKey(a.number), kb = invoiceSortKey(b.number);
+    return (ka === kb ? 0 : ka - kb) || String(a.number).localeCompare(String(b.number));
+  });
+}
+function normalizeWho(who, cfg){
+  if(!who) return '';
+  if(Array.isArray(who)) who = who.join(', ');
+  const s = String(who).trim();
+  if(s === 'No One') return 'No One';
+  const names = cfg.map(e => e.name);
+  return s.split(',').map(x => x.trim()).filter(Boolean)
+    .filter(x => names.indexOf(x) >= 0)
+    .sort((a, b) => a.localeCompare(b))
+    .join(', ');
+}
+function normalizeCategory(v){
+  const s = String(v || '').trim();
+  return CATEGORIES.indexOf(s) >= 0 ? s : '';
+}
+function checkEligible(cfg, who, cat){
+  who.split(',').map(x => x.trim()).filter(Boolean).forEach(emp => {
+    if(!employeeCanCategory(cfg, emp, cat)) throw new Error(emp + ' is not eligible for ' + cat);
+  });
+}
+async function getTxn(id){
+  const r = unwrap(await sb.from('transactions').select('*').eq('id', id).maybeSingle());
+  if(!r) throw new Error('Transaction not found');
+  return r;
+}
+async function updateTxn(id, patch){
+  const res = await sb.from('transactions').update(patch, { count: 'exact' }).eq('id', id);
+  if(res.error) throw new Error(res.error.message);
+  if(!res.count) throw new Error('Transaction not found');
+}
+
+/* ---- QBO import helpers ---- */
+function cleanDescription(s){ return String(s == null ? '' : s).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+function isQboFooter(r){
+  const vals = Object.keys(r || {}).map(k => String(r[k] || '').trim().toLowerCase()).filter(Boolean).join(' ');
+  return /accrual basis\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i.test(vals) || /^accrual basis\b/i.test(vals);
+}
+function serialToIso(serial){
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+/** Turns whatever the export gave us (d/m/yyyy, yyyy-mm-dd, a spreadsheet serial) into yyyy-mm-dd. */
+function toIsoDate(v, invoice){
+  const s = String(v == null ? '' : v).trim();
+  if(!s) return '';
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if(/^\d+(\.\d+)?$/.test(s)){
+    const n = Number(s);
+    if(n > 20000 && n < 80000) return serialToIso(n);
+  }
+  throw new Error('Invoice ' + invoice + ': could not read the date "' + s + '"');
+}
+function aggregateQboRows(rawRows){
+  const byInvoice = {};
+  const skipped = { credit: 0, footer: 0 };
+  (rawRows || []).forEach(r => {
+    if(isQboFooter(r)){ skipped.footer++; return; }
+    const type = String(r.transactionType || r.type || '').trim().toLowerCase();
+    if(type === 'credit note' || type === 'credit memo' || type === 'creditnote'){ skipped.credit++; return; }
+    const number = String(r.number == null ? '' : r.number).trim();
+    if(!number) return;
+    const product = String(r.product || '').trim();
+    const description = cleanDescription(r.description);
+    const qty = Number(r.quantity) || 0;
+    if(!byInvoice[number]) byInvoice[number] = { number, date: String(r.date || ''), customer: String(r.customer || ''), items: [] };
+    const x = byInvoice[number];
+    if(!x.date) x.date = String(r.date || '');
+    if(!x.customer) x.customer = String(r.customer || '');
+    x.items.push({ product, description, quantity: qty });
+  });
+  const rows = Object.keys(byInvoice)
+    .map(k => byInvoice[k])
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.number.localeCompare(b.number))
+    .map(x => ({
+      number: x.number,
+      date: toIsoDate(x.date, x.number),
+      customer: x.customer,
+      product: x.items.map(i => i.product).filter(Boolean).join('\n'),
+      description: x.items.map(i => i.description).filter(Boolean).join('\n'),
+      metres: round2(x.items.reduce((s, i) => s + i.quantity, 0)),
+      sourceLines: x.items,
+    }));
+  return { rows, skippedCreditNotes: skipped.credit, skippedReportFooter: skipped.footer };
+}
+/**
+ * Combines a fresh QBO export with what is already in the period.
+ *  - Invoice in both -> raw data refreshed; category/employee/comments/approval kept.
+ *  - Invoice already split into several lines -> those lines are kept as they are.
+ *  - Existing row not in this export (moved in from another month, added by hand) -> kept.
+ *  - Invoice only in the export -> added as a new unassigned row.
+ */
+function mergeImportedRows(existing, imported){
+  const byNumber = {}, existingOrder = [];
+  existing.forEach(r => {
+    const n = String(r.number).trim();
+    if(!byNumber[n]){ byNumber[n] = []; existingOrder.push(n); }
+    byNumber[n].push(r);
+  });
+  const used = {}, out = [];
+  imported.forEach(x => {
+    const n = String(x.number || '').trim();
+    const prior = byNumber[n];
+    if(prior && prior.length > 1){
+      if(!used[n]){ used[n] = true; prior.forEach(p => out.push(p)); }
+      return;
+    }
+    const old = prior && prior[0];
+    if(old) used[n] = true;
+    out.push({
+      number: x.number, date: x.date, customer: x.customer, product: x.product, description: x.description,
+      metres: x.metres,
+      category: old ? old.category : '',
+      who: old ? old.who : '',
+      comments: old ? old.comments : '',
+      sourceLines: x.sourceLines,
+      approved: old ? old.approved : false,
+    });
+  });
+  existingOrder.forEach(n => {
+    if(used[n]) return;
+    byNumber[n].forEach(p => out.push(p));
+  });
+  return out;
+}
+async function findDuplicateInvoices(currentPeriodId, numbers){
+  const wanted = [...new Set(numbers.filter(Boolean))];
+  const found = {};
+  for(let i = 0; i < wanted.length; i += 150){
+    const chunk = wanted.slice(i, i + 150);
+    let q = sb.from('transactions').select('number, periods(name)').in('number', chunk);
+    if(currentPeriodId) q = q.neq('period_id', currentPeriodId);
+    unwrap(await q).forEach(r => {
+      const n = String(r.number).trim();
+      const m = r.periods && r.periods.name;
+      if(!m) return;
+      if(!found[n]) found[n] = [];
+      if(found[n].indexOf(m) < 0) found[n].push(m);
+    });
+  }
+  return found;
+}
+
+const API = {
+  async bootstrap(){
+    await getEmployeeConfig();
+    return { employees: SAVED_CFG, months: await listMonths() };
+  },
+
+  async saveEmployeeConfig(employees){
+    const clean = [], seen = {};
+    (employees || []).forEach(e => {
+      const name = String(e.name || '').trim();
+      if(!name) throw new Error('Employee name cannot be blank');
+      const key = name.toLowerCase();
+      if(seen[key]) throw new Error('Duplicate employee: ' + name);
+      seen[key] = true;
+      const categories = {};
+      CATEGORIES.forEach(cat => {
+        const c = (e.categories && e.categories[cat]) || {};
+        categories[cat] = { enabled: !!c.enabled, threshold: Math.max(0, Number(c.threshold) || 0), rate: Math.max(0, Number(c.rate) || 0) };
+      });
+      clean.push({ name, active: e.active !== false, categories });
+    });
+    if(!clean.length) throw new Error('Add at least one employee');
+    unwrap(await sb.rpc('save_employee_config', { cfg: clean }));
+    return getEmployeeConfig();
+  },
+
+  async createCommissionPeriod(month){
+    monthSheetName(month);
+    unwrap(await sb.rpc('create_period', { p_month: month }));
+    return { months: await listMonths(), month };
+  },
+
+  async getMonthData(month){
+    const p = await getPeriod(month);
+    if(!p) return { month, exists: false, rows: [], pending: 0, toApprove: 0 };
+    const rows = sortInvoiceRows(await periodRows(p.id));
+    return {
+      month, exists: true, rows,
+      pending: rows.filter(r => !String(r.who || '').trim()).length,
+      toApprove: rows.filter(r => !r.approved).length,
+    };
+  },
+
+  async updateInlineField(month, id, field, value){
+    const cfg = await getEmployeeConfig();
+    const t = await getTxn(id);
+    if(field === 'who'){
+      const cat = String(t.category || '').trim();
+      const who = normalizeWho(value, cfg);
+      if(cat && who && who !== 'No One') checkEligible(cfg, who, cat);
+      const patch = { who };
+      if(who === 'No One') patch.category = '';
+      await updateTxn(id, patch);
+    } else if(field === 'category'){
+      const who = String(t.who || '').trim();
+      if(who === 'No One') throw new Error('Category is locked when "No One" gets commission');
+      const cat = normalizeCategory(value);
+      if(cat && who) checkEligible(cfg, who, cat);
+      await updateTxn(id, { category: cat });
+    } else {
+      throw new Error('Unknown field');
+    }
+    return API.getMonthData(month);
+  },
+
+  async approveTransaction(month, id){
+    const t = await getTxn(id);
+    if(!String(t.who || '').trim()) throw new Error('Choose who gets commission before approving');
+    await updateTxn(id, { approved: true });
+    return API.getMonthData(month);
+  },
+
+  async unapproveTransaction(month, id){
+    await updateTxn(id, { approved: false });
+    return API.getMonthData(month);
+  },
+
+  async deleteTransaction(month, id){
+    const res = await sb.from('transactions').delete({ count: 'exact' }).eq('id', id);
+    if(res.error) throw new Error(res.error.message);
+    if(!res.count) throw new Error('Transaction not found');
+    return API.getMonthData(month);
+  },
+
+  async moveTransaction(fromMonth, toMonth, id){
+    monthSheetName(fromMonth);
+    monthSheetName(toMonth);
+    if(toMonth === fromMonth) throw new Error('Choose a different period to move to');
+    unwrap(await sb.rpc('move_transaction', { p_id: id, p_month: toMonth }));
+    return { from: await API.getMonthData(fromMonth), months: await listMonths() };
+  },
+
+  async transferToNextMonth(month, id){
+    const toMonth = nextMonthName(month);
+    const result = await API.moveTransaction(month, toMonth, id);
+    result.toMonth = toMonth;
+    return result;
+  },
+
+  async splitTransaction(month, id, splits){
+    const cfg = await getEmployeeConfig();
+    const base = rowFromDb(await getTxn(id));
+    if(!splits || splits.length < 2) throw new Error('Create at least two split lines');
+    const source = base.sourceLines || [];
+    const newRows = [];
+
+    function splitLine(sp){
+      const given = (sp.category === undefined || sp.category === null) ? base.category : sp.category;
+      let cat = normalizeCategory(given);
+      const who = normalizeWho(sp.employee, cfg);
+      if(!who) throw new Error('Choose who gets commission for each split');
+      if(who === 'No One') cat = '';
+      else if(cat) checkEligible(cfg, who, cat);
+      return { cat, who };
+    }
+    const common = { number: base.number, txn_date: base.date || null, customer: base.customer, comments: base.comments };
+
+    if(source.length){
+      splits.forEach(sp => {
+        const idxs = Array.isArray(sp.lineIndexes) ? sp.lineIndexes.map(Number) : [];
+        const chosen = idxs.map(i => source[i]).filter(Boolean);
+        if(!chosen.length) return;
+        const { cat, who } = splitLine(sp);
+        newRows.push(Object.assign({}, common, {
+          product: chosen.map(i => i.product).filter(Boolean).join('\n'),
+          description: String(sp.description || chosen.map(i => i.description).filter(Boolean).join(' | ')),
+          metres: round2(chosen.reduce((s, i) => s + (Number(i.quantity) || 0), 0)),
+          category: cat, who, source_lines: chosen,
+        }));
+      });
+    } else {
+      const total = splits.reduce((s, x) => s + (Number(x.metres) || 0), 0);
+      if(Math.abs(total - base.metres) > 0.01) throw new Error('Split metres must add up to ' + base.metres.toFixed(2));
+      splits.forEach(sp => {
+        const { cat, who } = splitLine(sp);
+        newRows.push(Object.assign({}, common, {
+          product: base.product,
+          description: String(sp.description || base.description),
+          metres: Number(sp.metres) || 0,
+          category: cat, who, source_lines: [],
+        }));
+      });
+    }
+    if(newRows.length < 2) throw new Error('Create at least two split lines');
+    unwrap(await sb.rpc('split_transaction', { p_id: id, p_rows: newRows }));
+    return API.getMonthData(month);
+  },
+
+  async importQboRows(month, rawRows, overwriteExisting){
+    monthSheetName(month);
+    const period = await getPeriod(month);
+    const existing = period ? await periodRows(period.id) : [];
+    if(existing.length && !overwriteExisting){
+      return { needsConfirmation: true, existingRows: existing.length, month };
+    }
+    const parsed = aggregateQboRows(rawRows);
+    const finalRows = mergeImportedRows(existing, parsed.rows);
+
+    // Flag invoices that already appear in a different period, so the same invoice
+    // doesn't quietly get commissioned twice if two months' exports overlap.
+    const duplicateMap = await findDuplicateInvoices(period ? period.id : null, finalRows.map(x => x.number));
+    let duplicatesFlagged = 0;
+    finalRows.forEach(x => {
+      const months = duplicateMap[String(x.number).trim()];
+      if(!months || !months.length) return;
+      const note = 'Possibly duplicate — also found in: ' + months.join(', ');
+      if(x.comments.indexOf('Possibly duplicate') < 0){
+        x.comments = x.comments ? x.comments + ' | ' + note : note;
+        duplicatesFlagged++;
+      }
+    });
+
+    unwrap(await sb.rpc('replace_period_rows', {
+      p_month: month,
+      p_rows: finalRows.map(x => ({
+        number: x.number, txn_date: x.date || null, customer: x.customer, product: x.product,
+        description: x.description, metres: x.metres, category: x.category, who: x.who,
+        comments: x.comments, source_lines: x.sourceLines || [], approved: !!x.approved,
+      })),
+    }));
+    return {
+      needsConfirmation: false,
+      imported: parsed.rows.length,
+      written: finalRows.length,
+      skippedCreditNotes: parsed.skippedCreditNotes,
+      skippedReportFooter: parsed.skippedReportFooter,
+      duplicatesFlagged,
+    };
+  },
+
+  /** Builds the offline approval sheet as an .xlsx download. */
+  async createApprovalWorkbook(month){
+    if(typeof XLSX === 'undefined') throw new Error('The spreadsheet writer did not load. Refresh the page and try again.');
+    const data = await API.getMonthData(month);
+    if(!data.exists) throw new Error('Period not found');
+    if(!data.rows.length) throw new Error('There are no transactions in ' + month + ' to export');
+    const aoa = [['Fabric Bank Commission - ' + month], DATA_HEADERS.concat(['Row key'])]
+      .concat(data.rows.map(r => [r.number, r.date, r.customer, r.product, r.description, r.metres, r.category, r.who, r.comments, r.row]));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:10},{wch:12},{wch:26},{wch:26},{wch:60},{wch:9},{wch:14},{wch:26},{wch:30},{hidden:true}];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, month);
+    const fileName = 'Fabric Bank Commissions - ' + month + ' - for approval.xlsx';
+    XLSX.writeFile(wb, fileName);
+    return { fileName, rows: data.rows.length };
+  },
+
+  /** Reads category / employee choices off a completed approval sheet and applies them. */
+  async applyApprovalSheet(month, rows){
+    const period = await getPeriod(month);
+    if(!period) throw new Error('Period not found');
+    const existing = await periodRows(period.id);
+    if(!existing.length) throw new Error('There are no transactions in ' + month);
+    const byId = {};
+    existing.forEach(r => { byId[r.row] = r; });
+    const cfg = await getEmployeeConfig();
+    const byLowerName = {};
+    cfg.forEach(e => { byLowerName[e.name.toLowerCase()] = e; });
+
+    let updated = 0, unchanged = 0;
+    const problems = [], changes = [];
+
+    (rows || []).forEach(r => {
+      const invoice = String(r.number == null ? '' : r.number).trim();
+      const id = String(r.row == null ? '' : r.row).trim();
+      const label = invoice || ('row ' + (id || '?'));
+      const target = byId[id];
+      if(!target){ problems.push(label + ': that line is no longer in ' + month); return; }
+      if(invoice && String(target.number).trim() !== invoice){ problems.push(label + ': this line has moved since the export — skipped'); return; }
+
+      const rawCategory = String(r.category == null ? '' : r.category).trim();
+      const category = normalizeCategory(rawCategory);
+      if(rawCategory && !category){ problems.push(label + ': "' + rawCategory + '" is not one of the categories'); return; }
+
+      const rawWho = String(r.who == null ? '' : r.who).trim();
+      let who = '';
+      if(rawWho){
+        if(rawWho.toLowerCase() === 'no one'){
+          who = 'No One';
+        } else {
+          const parts = rawWho.split(/[,;\/]+/).map(x => x.trim()).filter(Boolean);
+          const resolved = [];
+          let unknown = null;
+          parts.forEach(p => {
+            const hit = byLowerName[p.toLowerCase()];
+            if(hit){ if(resolved.indexOf(hit.name) < 0) resolved.push(hit.name); } else { unknown = p; }
+          });
+          if(unknown){ problems.push(label + ': "' + unknown + '" is not one of the employees'); return; }
+          who = resolved.sort((a, b) => a.localeCompare(b)).join(', ');
+        }
+      }
+      if(who && who !== 'No One' && category){
+        let notEligible = null;
+        who.split(',').map(x => x.trim()).forEach(emp => {
+          const e = byLowerName[emp.toLowerCase()];
+          if(!e || !e.categories[category] || !e.categories[category].enabled) notEligible = emp;
+        });
+        if(notEligible){ problems.push(label + ': ' + notEligible + ' is not eligible for ' + category); return; }
+      }
+      const newCategory = who === 'No One' ? '' : category;
+      if(String(target.category || '').trim() === newCategory && String(target.who || '').trim() === who){ unchanged++; return; }
+      changes.push({ id, category: newCategory, who });
+      updated++;
+    });
+
+    if(changes.length) unwrap(await sb.rpc('apply_assignments', { p_rows: changes }));
+    return { updated, unchanged, problems, data: await API.getMonthData(month) };
+  },
+
+  /** Commission summary for one employee within one period, using the current rate/threshold structure. */
+  async getReport(month, employee){
+    const data = await API.getMonthData(month);
+    const cfg = await getEmployeeConfig();
+    const emp = cfg.find(e => e.name === employee);
+    if(!emp) throw new Error('Unknown employee');
+    const rows = data.rows.filter(r => r.category && r.who && r.who.split(',').map(x => x.trim()).indexOf(employee) >= 0);
+    const byCategory = {};
+    CATEGORIES.forEach(cat => { byCategory[cat] = { rows: [], metres: 0 }; });
+    rows.forEach(r => {
+      if(!byCategory[r.category]) return;
+      byCategory[r.category].rows.push(r);
+      byCategory[r.category].metres += r.metres;
+    });
+    const categories = CATEGORIES.map(cat => {
+      const rule = emp.categories[cat];
+      const metres = round2(byCategory[cat].metres);
+      const qualifying = rule.enabled ? Math.max(0, round2(metres - rule.threshold)) : 0;
+      const commission = round2(qualifying * rule.rate);
+      return { category: cat, enabled: rule.enabled, threshold: rule.threshold, rate: rule.rate, metres, qualifying, commission, rows: byCategory[cat].rows };
+    });
+    const totalCommission = round2(categories.reduce((s, c) => s + c.commission, 0));
+    return { month, employee, categories, totalCommission, rowCount: rows.length };
+  },
+
+  /** Opens the browser's print dialog on the report, so it can be saved as a PDF. */
+  async createEmployeePdf(month, employee){
+    const report = await API.getReport(month, employee);
+    printHtml(buildReportHtml(report));
+    return { fileName: 'Fabric Bank Commission - ' + employee + ' - ' + month + '.pdf' };
+  },
+};
+
+function call(fn, ...args){
+  return API[fn](...args);
+}
+
+/* ---- PDF report (printed from the browser) ---- */
+function escapeHtml(s){ return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function printHtml(html){
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  f.onload = () => {
+    f.contentWindow.focus();
+    f.contentWindow.print();
+    setTimeout(() => f.remove(), 60000);
+  };
+  document.body.appendChild(f);
+  f.srcdoc = html;
+}
+function buildReportHtml(report){
+  const sectionsHtml = report.categories.map(c => {
+    const lineItems = c.rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.number)}</td>
+        <td>${escapeHtml(r.date)}</td>
+        <td>${escapeHtml(r.customer)}</td>
+        <td>${escapeHtml(r.description)}</td>
+        <td style="text-align:right">${r.metres.toFixed(2)}</td>
+      </tr>`).join('');
+    return `
+      <h3 style="margin:20px 0 6px;font-family:Arial;">${escapeHtml(c.category)}${c.enabled ? '' : ' (not eligible)'}</h3>
+      <table style="width:100%;border-collapse:collapse;font-family:Arial;font-size:11px;margin-bottom:14px">
+        <tr style="background:#eef1f3">
+          <th style="text-align:left;padding:5px;border-bottom:1px solid #ccc;width:80px">Invoice</th>
+          <th style="text-align:left;padding:5px;border-bottom:1px solid #ccc;width:90px">Date</th>
+          <th style="text-align:left;padding:5px;border-bottom:1px solid #ccc;width:170px">Customer</th>
+          <th style="text-align:left;padding:5px;border-bottom:1px solid #ccc">Description</th>
+          <th style="text-align:right;padding:5px;border-bottom:1px solid #ccc;width:70px">Metres</th>
+        </tr>
+        ${lineItems || '<tr><td colspan="5" style="padding:6px;color:#888">No transactions in this category</td></tr>'}
+        <tr style="font-weight:bold;border-top:2px solid #24364a;background:#f6f7f8">
+          <td colspan="4" style="padding:6px 5px">Total metres</td>
+          <td style="text-align:right;padding:6px 5px">${c.metres.toFixed(2)}</td>
+        </tr>
+        <tr style="color:#666;font-style:italic">
+          <td colspan="5" style="padding:4px 5px">Threshold: ${c.threshold.toFixed(2)}m &nbsp;·&nbsp; Rate: R${c.rate.toFixed(2)} / m</td>
+        </tr>
+        <tr style="font-weight:bold;border-top:2px solid #24364a;background:#f6f7f8">
+          <td colspan="4" style="padding:6px 5px">Qualifying metres</td>
+          <td style="text-align:right;padding:6px 5px">${c.qualifying.toFixed(2)}</td>
+        </tr>
+        <tr style="font-weight:bold;border-top:1px solid #24364a;background:#eef6ef;color:#1d5c34">
+          <td colspan="4" style="padding:6px 5px">Commission</td>
+          <td style="text-align:right;padding:6px 5px">R${c.commission.toFixed(2)}</td>
+        </tr>
+      </table>`;
+  }).join('');
+  return `<!doctype html><html><head><meta charset="utf-8">
+    <title>Fabric Bank Commission - ${escapeHtml(report.employee)} - ${escapeHtml(report.month)}</title>
+    <style>@page { size: A4 landscape; margin: 14mm; } body{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style>
+    </head><body style="font-family:Arial;color:#1d2733">
+    <div style="background:#24364a;color:#fff;padding:20px 26px">
+      <div style="font-size:14px;letter-spacing:.5px;opacity:.85;text-transform:uppercase">Fabric Bank Commissions — ${escapeHtml(report.month)}</div>
+      <div style="font-size:34px;font-weight:bold;margin-top:4px">${escapeHtml(report.employee)}</div>
+    </div>
+    <div style="padding:22px 26px">
+      ${sectionsHtml}
+      <hr style="margin:22px 0;border:none;border-top:2px solid #24364a">
+      <div style="font-size:16px;font-weight:bold;text-align:right">Total commission: R${report.totalCommission.toFixed(2)}</div>
+    </div>
+  </body></html>`;
+}
+
+/* =========================================================
+   Sign in / roles
+   ========================================================= */
+let ROLE = null;
+
+function showLogin(msg){
+  document.getElementById('loginModal').classList.remove('hidden');
+  document.getElementById('userBox').classList.add('hidden');
+  document.getElementById('loginStatus').textContent = msg || '';
+  document.getElementById('loginBtn').disabled = false;
+}
+async function signIn(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const statusEl = document.getElementById('loginStatus');
+  const btn = document.getElementById('loginBtn');
+  if(!email || !password){ statusEl.textContent = 'Enter your email and password.'; return; }
+  btn.disabled = true;
+  statusEl.textContent = 'Signing in...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ statusEl.textContent = error.message; btn.disabled = false; return; }
+  await enterApp(data.session);
+}
+async function signOut(){
+  await sb.auth.signOut();
+  location.reload();
+}
+async function enterApp(session){
+  const { data: prof, error } = await sb.from('profiles').select('role').eq('user_id', session.user.id).maybeSingle();
+  if(error || !prof){
+    await sb.auth.signOut();
+    showLogin('This account has not been given access yet.');
+    return;
+  }
+  ROLE = prof.role;
+  document.getElementById('loginModal').classList.add('hidden');
+  document.getElementById('userEmail').textContent = session.user.email;
+  document.getElementById('userBox').classList.remove('hidden');
+  if(ROLE !== 'admin') document.querySelectorAll('.adminOnly').forEach(el => el.classList.add('hidden'));
+  init();
+}
+async function boot(){
+  const { data } = await sb.auth.getSession();
+  if(!data.session){ showLogin(); return; }
+  await enterApp(data.session);
+}
+
+/* =========================================================
+   UI
+   ========================================================= */
+let STATE = { employees: [], months: [], selectedMonth: null, monthData: null, homeData: null };
+let splitRow = null, splitSource = [];
+let moveRow = null;
+
+function showTab(name){
+  ['approvalHome','periods','data','employees','structure','reports'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
+    document.getElementById('nav'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===name);
+  });
+  if(name==='approvalHome') loadApprovalHome();
+  if(name==='employees') renderEmployees();
+  if(name==='structure') renderStructure();
+  if(name==='periods') renderPeriodList();
+  if(name==='data') loadApproval();
+  if(name==='reports') initReportsTab();
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',3000);
+}
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function linesHtml(s){return esc(s).replace(/\n/g,'<br>')}
+
+function eligibleEmployeeNames(category){
+  return STATE.employees
+    .filter(e => !category || (e.categories && e.categories[category] && e.categories[category].enabled))
+    .map(e => e.name)
+    .sort((a,b)=>a.localeCompare(b));
+}
+
+function currentMonth(){ return document.getElementById('approvalMonth').value; }
+function flashSaved(el){ el.classList.add('flash-ok'); setTimeout(()=>el.classList.remove('flash-ok'), 500); }
+
+// Close any open employee menu when clicking elsewhere on the page.
+document.addEventListener('click', function(e){
+  document.querySelectorAll('.inlineWho[open]').forEach(d=>{
+    if(!d.contains(e.target)) d.open = false;
+  });
+});
+
+/* =========================================================
+   Shared row-editor generators (used by both Commissions for
+   Approval and Commission Data)
+   ========================================================= */
+function categorySelectHtml(r, monthField){
+  const disabled = r.who==='No One';
+  const opts = ['','Decor','Fashion','Wallpaper'].map(x=>`<option value="${esc(x)}" ${r.category===x?'selected':''}>${x?esc(x):'— unassigned —'}</option>`).join('');
+  return `<select class="catSelect" data-row="${r.row}" data-monthfield="${monthField}" ${disabled?'disabled':''} onchange="onCategoryChange(this)">${opts}</select>`;
+}
+
+function whoEditorHtml(r, monthField){
+  const currentVals = r.who ? r.who.split(',').map(x=>x.trim()).filter(Boolean) : [];
+  const eligible = eligibleEmployeeNames(r.category);
+  const label = r.who || 'Select employee(s)';
+  return `<details class="inlineWho" data-row="${r.row}" data-monthfield="${monthField}">
+    <summary>${esc(label)}</summary>
+    <div class="whoMenu">
+      ${eligible.map(e=>`<label><input type="checkbox" data-emp="${esc(e)}" ${currentVals.includes(e)?'checked':''} onchange="onWhoCheckboxChange(this)"> ${esc(e)}</label>`).join('')}
+      <label class="noOneOpt"><input type="checkbox" data-emp="No One" ${currentVals.includes('No One')?'checked':''} onchange="onWhoCheckboxChange(this)"> No One</label>
+    </div>
+  </details>`;
+}
+
+/** Which STATE bucket + <select> id a row-editor's "month" comes from, based on data-monthfield. */
+function contextFor(monthField){
+  if(monthField==='home') return { data: STATE.homeData, monthSelectId: 'homeMonth', rerender: renderApprovalHome, badge: updateHomeBadge };
+  return { data: STATE.monthData, monthSelectId: 'approvalMonth', rerender: renderApproval, badge: updateApprovalBadge };
+}
+
+function refreshWhoCell(monthField, row){
+  const ctx = contextFor(monthField);
+  const rowObj = ctx.data.rows.find(x=>x.row===row);
+  const cell = document.getElementById('whoCell-'+monthField+'-'+row);
+  if(!cell) return;
+  const wasOpen = cell.querySelector('.inlineWho')?.open;
+  cell.innerHTML = whoEditorHtml(rowObj, monthField);
+  if(wasOpen) cell.querySelector('.inlineWho').open = true;
+}
+
+function onCategoryChange(sel){
+  const monthField = sel.dataset.monthfield;
+  const ctx = contextFor(monthField);
+  const row = String(sel.dataset.row);
+  const tr = sel.closest('tr');
+  const rowObj = ctx.data.rows.find(x=>x.row===row);
+  const prevCategory = rowObj.category;
+  const prevWho = rowObj.who;
+  const value = sel.value;
+  rowObj.category = value;
+
+  let whoChanged = false;
+  if(rowObj.who && rowObj.who !== 'No One'){
+    const eligible = eligibleEmployeeNames(value);
+    const kept = rowObj.who.split(',').map(x=>x.trim()).filter(x=>eligible.includes(x));
+    const newWho = kept.join(', ');
+    whoChanged = newWho !== rowObj.who;
+    rowObj.who = newWho;
+  }
+
+  refreshWhoCell(monthField, row);
+  tr.classList.toggle('assignedRow', !!rowObj.who);
+  ctx.data.pending = ctx.data.rows.filter(r=>!r.who).length;
+  ctx.badge(ctx.data);
+  flashSaved(sel);
+
+  const month = document.getElementById(ctx.monthSelectId).value;
+  const saves = [call('updateInlineField', month, row, 'category', value)];
+  if(whoChanged) saves.push(call('updateInlineField', month, row, 'who', rowObj.who));
+
+  Promise.all(saves).catch(e=>{
+    rowObj.category = prevCategory;
+    rowObj.who = prevWho;
+    sel.value = prevCategory;
+    refreshWhoCell(monthField, row);
+    tr.classList.toggle('assignedRow', !!prevWho);
+    ctx.data.pending = ctx.data.rows.filter(r=>!r.who).length;
+    ctx.badge(ctx.data);
+    toast('Error: ' + (e.message || e));
+  });
+}
+
+let whoSaveTimers = {};
+function onWhoCheckboxChange(cb){
+  const details = cb.closest('.inlineWho');
+  const menu = cb.closest('.whoMenu');
+  const monthField = details.dataset.monthfield;
+  const ctx = contextFor(monthField);
+  const row = String(details.dataset.row);
+  const tr = details.closest('tr');
+  const rowObj = ctx.data.rows.find(x=>x.row===row);
+
+  if(cb.dataset.emp === 'No One'){
+    if(cb.checked) menu.querySelectorAll('input[type=checkbox]').forEach(x=>{ if(x!==cb) x.checked=false; });
+  } else if(cb.checked){
+    const no = menu.querySelector('input[data-emp="No One"]');
+    if(no && no.checked) no.checked = false;
+  }
+
+  const chosen = [...menu.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.dataset.emp);
+  const who = chosen.join(', ');
+  rowObj.who = who;
+  details.querySelector('summary').textContent = who || 'Select employee(s)';
+  tr.classList.toggle('assignedRow', !!who);
+
+  const catSel = tr.querySelector('.catSelect');
+  if(who === 'No One'){
+    rowObj.category = '';
+    catSel.value = '';
+    catSel.disabled = true;
+  } else {
+    catSel.disabled = false;
+  }
+  ctx.data.pending = ctx.data.rows.filter(r=>!r.who).length;
+  ctx.badge(ctx.data);
+
+  const timerKey = monthField + '-' + row;
+  clearTimeout(whoSaveTimers[timerKey]);
+  const month = document.getElementById(ctx.monthSelectId).value;
+  whoSaveTimers[timerKey] = setTimeout(()=>{
+    call('updateInlineField', month, row, 'who', who)
+      .then(()=>flashSaved(details.querySelector('summary')))
+      .catch(e=>{
+        toast('Error: ' + (e.message || e));
+        if(monthField==='home') loadApprovalHome(); else loadApproval();
+      });
+  }, 500);
+}
+
+/* =========================================================
+   Employees
+   ========================================================= */
+function addEmployeeRow(){
+  STATE.employees.push({
+    name:'',
+    active:true,
+    categories: Object.fromEntries(CATEGORIES.map(c=>[c,{enabled:true,threshold:c==='Wallpaper'?150:300,rate:c==='Fashion'?5:10}]))
+  });
+  renderEmployees();
+  renderStructure();
+}
+function removeEmployeeRow(i){
+  STATE.employees.splice(i,1);
+  renderEmployees();
+  renderStructure();
+}
+function updateEmployeeName(i, value){
+  STATE.employees[i].name = value;
+  const label = document.getElementById('structName-'+i);
+  if(label) label.textContent = value.trim() || '(unnamed)';
+}
+function renderEmployees(){
+  const body=document.getElementById('employeeBody');
+  if(!STATE.employees.length){
+    body.innerHTML='<tr><td colspan="3" class="empty">No employees yet — click "+ Add employee"</td></tr>';
+    return;
+  }
+  body.innerHTML=STATE.employees.map((e,i)=>`
+    <tr>
+      <td><input type="text" value="${esc(e.name)}" oninput="updateEmployeeName(${i}, this.value)"></td>
+      <td><input type="checkbox" ${e.active?'checked':''} onchange="STATE.employees[${i}].active=this.checked"></td>
+      <td><button class="btn danger small" onclick="removeEmployeeRow(${i})">Remove</button></td>
+    </tr>`).join('');
+}
+function renderStructure(){
+  const body=document.getElementById('structureBody');
+  if(!STATE.employees.length){
+    body.innerHTML='<tr><td colspan="4" class="empty">Add employees first</td></tr>';
+    return;
+  }
+  body.innerHTML=STATE.employees.map((e,i)=>`
+    <tr>
+      <td><strong id="structName-${i}">${esc(e.name)||'(unnamed)'}</strong></td>
+      ${CATEGORIES.map(cat=>{
+        const c=e.categories[cat];
+        return `<td><div class="ruleCell">
+          <label><input type="checkbox" ${c.enabled?'checked':''} onchange="STATE.employees[${i}].categories['${cat}'].enabled=this.checked"> Eligible</label>
+          <div class="ruleRow">
+            <input type="number" value="${c.threshold}" title="Threshold (m)" oninput="STATE.employees[${i}].categories['${cat}'].threshold=Number(this.value)||0">
+            <input type="number" value="${c.rate}" title="Rate (R/m)" oninput="STATE.employees[${i}].categories['${cat}'].rate=Number(this.value)||0">
+          </div>
+        </div></td>`;
+      }).join('')}
+    </tr>`).join('');
+}
+async function saveEmployees(){
+  try{
+    const result = await call('saveEmployeeConfig', STATE.employees);
+    STATE.employees = result;
+    renderEmployees();
+    renderStructure();
+    toast('Saved');
+  }catch(e){
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+/* =========================================================
+   Commission Periods
+   ========================================================= */
+function renderPeriodList(){
+  const el = document.getElementById('periodList');
+  if(!STATE.months.length){
+    el.innerHTML = '<span class="empty" style="padding:0">No periods yet — click "+ New period"</span>';
+  } else {
+    el.innerHTML = STATE.months.map(m => `<div class="periodChip ${m===STATE.selectedMonth?'selected':''}" onclick="selectMonth('${m}')">${m}</div>`).join('');
+  }
+  document.getElementById('importBtn').disabled = !STATE.selectedMonth;
+  renderPreview();
+}
+async function selectMonth(m){
+  STATE.selectedMonth = m;
+  renderPeriodList();
+}
+async function renderPreview(){
+  const empty = document.getElementById('previewEmpty');
+  const wrap = document.getElementById('previewWrap');
+  const title = document.getElementById('previewTitle');
+  if(!STATE.selectedMonth){
+    empty.classList.remove('hidden');
+    wrap.classList.add('hidden');
+    title.textContent = 'Raw data preview';
+    return;
+  }
+  title.textContent = 'Raw data preview — ' + STATE.selectedMonth;
+  try{
+    const data = await call('getMonthData', STATE.selectedMonth);
+    if(!data.rows.length){
+      empty.textContent = 'No data imported for this period yet.';
+      empty.classList.remove('hidden');
+      wrap.classList.add('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    wrap.classList.remove('hidden');
+    document.getElementById('previewBody').innerHTML = data.rows.map(r => `
+      <tr><td>${esc(r.number)}</td><td>${esc(r.date)}</td><td>${esc(r.customer)}</td><td>${r.metres.toFixed(2)}</td></tr>
+    `).join('');
+  }catch(e){
+    toast('Error loading period: ' + (e.message || e));
+  }
+}
+
+function setupPeriodYears(monthId, yearId){
+  const now = new Date().getFullYear();
+  const years = [];
+  for(let y=now-5;y<=now+2;y++) years.push(y);
+  fillSelect(monthId, MONTH_NAMES);
+  fillSelect(yearId, years.map(String));
+  document.getElementById(monthId).value = new Date().toLocaleString('en-US',{month:'long'});
+  document.getElementById(yearId).value = String(now);
+}
+function fillSelect(id, values){
+  const el = document.getElementById(id);
+  const prev = el.value;
+  el.innerHTML = values.map(v=>`<option value="${v}">${v}</option>`).join('');
+  if(prev && values.indexOf(prev) >= 0) el.value = prev;
+}
+function openPeriodCreator(){ setupPeriodYears('newPeriodMonth','newPeriodYear'); document.getElementById('periodModal').classList.remove('hidden'); }
+function closePeriodCreator(){ document.getElementById('periodModal').classList.add('hidden'); }
+async function createPeriod(){
+  const m = document.getElementById('newPeriodMonth').value + ' ' + document.getElementById('newPeriodYear').value;
+  try{
+    const r = await call('createCommissionPeriod', m);
+    STATE.months = r.months;
+    STATE.selectedMonth = m;
+    fillSelect('approvalMonth', STATE.months);
+    fillSelect('homeMonth', STATE.months);
+    document.getElementById('approvalMonth').value = m;
+    document.getElementById('homeMonth').value = m;
+    closePeriodCreator();
+    renderPeriodList();
+    toast(m + ' created');
+  }catch(e){
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+/* =========================================================
+   QBO import
+   ========================================================= */
+function openImport(){
+  if(!STATE.selectedMonth){ toast('Select a period first'); return; }
+  document.getElementById('importMonthLabel').textContent = STATE.selectedMonth;
+  document.getElementById('importStatus').textContent = '';
+  document.getElementById('qboFile').value = '';
+  document.getElementById('importModal').classList.remove('hidden');
+}
+function closeImport(){ document.getElementById('importModal').classList.add('hidden'); }
+
+function parseCsv(text){
+  const lines = text.split(/\r?\n/).filter(x=>x.trim());
+  if(!lines.length) return [];
+  function split(line){
+    const out=[]; let cur='', q=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else q=!q; }
+      else if(c===',' && !q){ out.push(cur); cur=''; }
+      else cur+=c;
+    }
+    out.push(cur);
+    return out;
+  }
+  const h = split(lines[0]).map(x=>x.trim().toLowerCase());
+  const idx = {
+    number: h.indexOf('number'), type: h.indexOf('transaction type'), date: h.indexOf('transaction date'),
+    customer: h.indexOf('customer'), product: h.indexOf('product/service full name'),
+    description: h.indexOf('description'), quantity: h.indexOf('quantity'),
+  };
+  return lines.slice(1).map(l=>{
+    const a = split(l);
+    return { number:a[idx.number], transactionType:a[idx.type], date:a[idx.date], customer:a[idx.customer], product:a[idx.product], description:a[idx.description], quantity:a[idx.quantity] };
+  });
+}
+
+async function processImport(){
+  const f = document.getElementById('qboFile').files[0];
+  if(!f){ toast('Choose a QBO export first'); return; }
+  const month = STATE.selectedMonth;
+  const statusEl = document.getElementById('importStatus');
+  try{
+    statusEl.textContent = 'Reading ' + f.name + '...';
+    let rows;
+    if(f.name.toLowerCase().endsWith('.csv')){
+      rows = parseCsv(await f.text());
+    } else if(/\.xlsx?$/i.test(f.name)){
+      if(typeof XLSX === 'undefined') throw new Error('Excel parser did not load. Please use CSV instead.');
+      const wb = XLSX.read(await f.arrayBuffer(), {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const a = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      const h = a.findIndex(r => String(r[0]||'').trim().toLowerCase()==='number');
+      if(h<0) throw new Error('Could not find the QBO header row (a column called "Number").');
+      const headers = a[h].map(x=>String(x).trim().toLowerCase());
+      const idx = {
+        number: headers.indexOf('number'), type: headers.indexOf('transaction type'), date: headers.indexOf('transaction date'),
+        customer: headers.indexOf('customer'), product: headers.indexOf('product/service full name'),
+        description: headers.indexOf('description'), quantity: headers.indexOf('quantity'),
+      };
+      rows = a.slice(h+1).map(r => ({ number:r[idx.number], transactionType:r[idx.type], date:r[idx.date], customer:r[idx.customer], product:r[idx.product], description:r[idx.description], quantity:r[idx.quantity] }));
+    } else {
+      throw new Error('Please upload a CSV or Excel (.xlsx) file.');
+    }
+
+    const existing = await call('getMonthData', month);
+    let overwrite = false;
+    if(existing.exists && existing.rows.length){
+      if(!confirm(month + ' already has ' + existing.rows.length + ' rows. Re-importing refreshes the raw data, keeps any category/employee/approval already set, keeps lines that were split, and keeps lines that are not in this export (such as ones transferred in from another month). Continue?')) {
+        statusEl.textContent = 'Import cancelled.';
+        return;
+      }
+      overwrite = true;
+    }
+
+    statusEl.textContent = 'Importing ' + rows.length + ' QBO lines...';
+    const result = await call('importQboRows', month, rows, overwrite);
+    statusEl.textContent = 'Imported ' + result.imported + ' invoice rows. ' + result.skippedCreditNotes + ' credit notes skipped, ' + result.skippedReportFooter + ' report footer rows skipped.'
+      + (result.duplicatesFlagged ? ' ' + result.duplicatesFlagged + ' invoice(s) flagged as possible duplicates of another period — check the Comments in Commission Data.' : '');
+    closeImport();
+    renderPreview();
+    toast('QBO import complete');
+  }catch(e){
+    statusEl.textContent = 'Import failed: ' + (e.message || e);
+  }
+}
+
+/* =========================================================
+   Commissions for Approval (client-facing home page)
+   ========================================================= */
+async function loadApprovalHome(){
+  fillSelect('homeMonth', STATE.months);
+  if(!document.getElementById('homeMonth').value && STATE.selectedMonth) document.getElementById('homeMonth').value = STATE.selectedMonth;
+  const m = document.getElementById('homeMonth').value;
+  if(!m){ document.getElementById('homeBody').innerHTML = '<tr><td colspan="11" class="empty">No commission period has been created yet.</td></tr>'; updateHomeBadge({toApprove:0}); return; }
+  STATE.homeData = await call('getMonthData', m);
+  renderApprovalHome();
+  updateHomeBadge(STATE.homeData);
+}
+function updateHomeBadge(data){
+  document.getElementById('toApproveBadge').textContent = (data && data.toApprove) || 0;
+}
+function matches(r,q){
+  if(!q) return true;
+  return [r.number,r.customer,r.product,r.description,r.category,r.who].join(' ').toLowerCase().includes(q.toLowerCase());
+}
+function renderApprovalHome(){
+  if(!STATE.homeData) return;
+  const q = document.getElementById('homeSearch').value;
+  const rows = STATE.homeData.rows.filter(r => !r.approved && matches(r,q));
+
+  document.getElementById('homeBody').innerHTML = rows.length
+    ? rows.map(r => `<tr data-rownum="home-${r.row}" ${r.who ? 'class="assignedRow"' : ''}>
+        <td><b>${esc(r.number)}</b></td>
+        <td>${esc(r.date)}</td>
+        <td>${esc(r.customer)}</td>
+        <td>${linesHtml(r.product)}</td>
+        <td>${linesHtml(r.description)}</td>
+        <td class="num">${r.metres.toFixed(2)}</td>
+        <td>${categorySelectHtml(r,'home')}</td>
+        <td id="whoCell-home-${r.row}">${whoEditorHtml(r,'home')}</td>
+        <td><button class="btn warn small" onclick="openSplit('${r.row}', 'home')">Split</button></td>
+        <td><button class="btn small" title="Move this transaction to the next month's period" onclick="transferRow('${r.row}')">→ Next month</button></td>
+        <td><button class="btn approve small" title="Approve" ${r.who ? '' : 'disabled'} onclick="approveRow('${r.row}')">✓ Approve</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="11" class="empty">Nothing left to approve for this period 🎉</td></tr>';
+}
+async function approveRow(row){
+  const month = document.getElementById('homeMonth').value;
+  const tr = document.querySelector('tr[data-rownum="home-'+row+'"]');
+  const idx = STATE.homeData.rows.findIndex(x=>x.row===row);
+  if(idx<0) return;
+  STATE.homeData.rows[idx].approved = true;
+  if(tr) tr.remove();
+  STATE.homeData.toApprove = STATE.homeData.rows.filter(r=>!r.approved).length;
+  updateHomeBadge(STATE.homeData);
+  if(!document.querySelectorAll('#homeBody tr[data-rownum]').length) renderApprovalHome();
+  try{
+    await call('approveTransaction', month, row);
+    toast('Approved');
+  }catch(e){
+    STATE.homeData.rows[idx].approved = false;
+    STATE.homeData.toApprove = STATE.homeData.rows.filter(r=>!r.approved).length;
+    updateHomeBadge(STATE.homeData);
+    renderApprovalHome();
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+function nextMonthLabel(month){
+  const parts = String(month||'').trim().split(/\s+/);
+  let idx = MONTH_NAMES.indexOf(parts[0]);
+  let year = Number(parts[1]);
+  if(idx < 0 || !year) return '';
+  idx += 1;
+  if(idx > 11){ idx = 0; year += 1; }
+  return MONTH_NAMES[idx] + ' ' + year;
+}
+async function transferRow(row){
+  const month = document.getElementById('homeMonth').value;
+  const r = STATE.homeData.rows.find(x=>x.row===row);
+  if(!r) return;
+  const target = nextMonthLabel(month);
+  if(!target){ toast('Could not work out the next period'); return; }
+  if(!confirm('Move invoice ' + r.number + ' (' + r.customer + ') to ' + target + '?\n\nIt will leave ' + month + ' and appear in ' + target + ' for approval.')) return;
+  try{
+    const result = await call('transferToNextMonth', month, row);
+    STATE.homeData = result.from;
+    STATE.months = result.months;
+    fillSelect('homeMonth', STATE.months);
+    fillSelect('approvalMonth', STATE.months);
+    document.getElementById('homeMonth').value = month;
+    renderApprovalHome();
+    updateHomeBadge(STATE.homeData);
+    renderPeriodList();
+    toast('Moved to ' + result.toMonth);
+  }catch(e){
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+/* =========================================================
+   Offline approval sheet (Excel export / import back)
+   ========================================================= */
+async function exportApprovalSheet(){
+  const month = document.getElementById('homeMonth').value;
+  const statusEl = document.getElementById('exportStatus');
+  const btn = document.getElementById('exportSheetBtn');
+  if(!month){ toast('Choose a commission period first'); return; }
+  try{
+    btn.disabled = true;
+    statusEl.textContent = 'Building the approval sheet for ' + month + '...';
+    const r = await call('createApprovalWorkbook', month);
+    statusEl.textContent = r.rows + ' lines exported to ' + r.fileName + ' (in your downloads). Send it to your client, then bring their answers back with "Import completed sheet".';
+    toast('Export ready');
+  }catch(e){
+    statusEl.textContent = 'Export failed: ' + (e.message || e);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function openSheetImport(){
+  const month = document.getElementById('homeMonth').value;
+  if(!month){ toast('Choose a commission period first'); return; }
+  document.getElementById('sheetImportMonth').textContent = month;
+  document.getElementById('sheetImportStatus').textContent = '';
+  document.getElementById('sheetImportFile').value = '';
+  document.getElementById('sheetImportModal').classList.remove('hidden');
+}
+function closeSheetImport(){ document.getElementById('sheetImportModal').classList.add('hidden'); }
+
+function parseApprovalSheet(matrix){
+  const h = matrix.findIndex(r => {
+    const a = String(r[0]||'').trim().toLowerCase();
+    return a === 'number' || a === 'invoice';
+  });
+  if(h < 0) throw new Error('This does not look like a sheet exported from this app (no "Number" heading in the first column).');
+  const headers = matrix[h].map(x => String(x||'').trim().toLowerCase());
+  // Match on the heading where we can, fall back to the export's column positions.
+  function col(starts, fallback){
+    for(const start of starts){
+      const i = headers.findIndex(x => x.indexOf(start) === 0);
+      if(i >= 0) return i;
+    }
+    return fallback;
+  }
+  const ix = {
+    number: 0,
+    category: col(['category'], 6),
+    who: col(['who gets commission'], 7),
+    row: col(['row key'], 9),
+  };
+  const rows = matrix.slice(h+1)
+    .filter(r => String(r[ix.number]||'').trim())
+    .map(r => ({ number: r[ix.number], category: r[ix.category], who: r[ix.who], row: r[ix.row] }));
+  if(rows.length && !rows.some(r => String(r.row||'').trim())){
+    throw new Error('The hidden "Row key" column is empty — please send back the sheet this app exported, with its columns intact.');
+  }
+  return rows;
+}
+
+async function processSheetImport(){
+  const f = document.getElementById('sheetImportFile').files[0];
+  const month = document.getElementById('sheetImportMonth').textContent;
+  const statusEl = document.getElementById('sheetImportStatus');
+  if(!f){ toast('Choose the completed sheet first'); return; }
+  try{
+    statusEl.textContent = 'Reading ' + f.name + '...';
+    if(typeof XLSX === 'undefined') throw new Error('The spreadsheet reader did not load. Refresh the page and try again.');
+    let wb;
+    if(f.name.toLowerCase().endsWith('.csv')){
+      wb = XLSX.read(await f.text(), {type:'string'});
+    } else {
+      wb = XLSX.read(await f.arrayBuffer(), {type:'array'});
+    }
+    let rows = null;
+    for(const name of wb.SheetNames){
+      const matrix = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, defval:''});
+      try{ rows = parseApprovalSheet(matrix); break; }catch(err){ /* try the next sheet */ }
+    }
+    if(!rows) throw new Error('No sheet in that file has the exported "Invoice" and "Row key" columns.');
+    if(!rows.length) throw new Error('That sheet has no transaction lines.');
+
+    statusEl.textContent = 'Applying ' + rows.length + ' lines to ' + month + '...';
+    const result = await call('applyApprovalSheet', month, rows);
+    STATE.homeData = result.data;
+    renderApprovalHome();
+    updateHomeBadge(STATE.homeData);
+    if(STATE.monthData && document.getElementById('approvalMonth').value === month){
+      STATE.monthData = result.data;
+      renderApproval();
+      updateApprovalBadge(STATE.monthData);
+    }
+    let msg = result.updated + ' line(s) updated, ' + result.unchanged + ' already matched.';
+    if(result.problems.length){
+      msg += '<br><b>' + result.problems.length + ' line(s) skipped:</b><br>' + result.problems.map(esc).join('<br>');
+    }
+    statusEl.innerHTML = msg;
+    toast(result.updated + ' line(s) updated');
+  }catch(e){
+    statusEl.textContent = 'Import failed: ' + (e.message || e);
+  }
+}
+
+/* =========================================================
+   Commission Data (admin — Approved status / Uncheck / Move)
+   ========================================================= */
+async function loadApproval(){
+  fillSelect('approvalMonth', STATE.months);
+  if(!document.getElementById('approvalMonth').value && STATE.selectedMonth) document.getElementById('approvalMonth').value = STATE.selectedMonth;
+  const m = document.getElementById('approvalMonth').value;
+  if(!m){ document.getElementById('approvalBody').innerHTML = '<tr><td colspan="11" class="empty">Create a commission period first.</td></tr>'; return; }
+  STATE.monthData = await call('getMonthData', m);
+  renderApproval();
+  updateApprovalBadge(STATE.monthData);
+}
+function updateApprovalBadge(data){
+  document.getElementById('pendingBadge').textContent = (data && data.pending) || 0;
+}
+
+async function deleteRow(row){
+  if(!confirm('Delete this transaction? This cannot be undone.')) return;
+  const tr = document.querySelector('tr[data-rownum="data-'+row+'"]');
+  const idx = STATE.monthData.rows.findIndex(x=>x.row===row);
+  const removed = idx>=0 ? STATE.monthData.rows.splice(idx,1)[0] : null;
+  if(tr) tr.remove();
+  STATE.monthData.pending = STATE.monthData.rows.filter(r=>!r.who).length;
+  updateApprovalBadge(STATE.monthData);
+  try{
+    await call('deleteTransaction', currentMonth(), row);
+    toast('Deleted');
+  }catch(e){
+    if(removed) STATE.monthData.rows.splice(idx,0,removed);
+    STATE.monthData.pending = STATE.monthData.rows.filter(r=>!r.who).length;
+    updateApprovalBadge(STATE.monthData);
+    renderApproval();
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+async function uncheckRow(row){
+  const month = currentMonth();
+  const tr = document.querySelector('tr[data-rownum="data-'+row+'"]');
+  const rowObj = STATE.monthData.rows.find(x=>x.row===row);
+  rowObj.approved = false;
+  if(tr) tr.classList.remove('approvedRow');
+  renderApproval();
+  try{
+    await call('unapproveTransaction', month, row);
+    toast('Sent back to Commissions for Approval');
+  }catch(e){
+    rowObj.approved = true;
+    renderApproval();
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+function approvalCellHtml(r){
+  if(r.approved){
+    return `<span class="approvalBadge yes">✓ Approved</span> <button class="btn small" onclick="uncheckRow('${r.row}')">Uncheck</button>`;
+  }
+  return `<span class="approvalBadge no">Not yet</span>`;
+}
+
+function renderApproval(){
+  if(!STATE.monthData) return;
+  const q = document.getElementById('approvalSearch').value;
+  const rows = STATE.monthData.rows.filter(r => matches(r,q));
+
+  document.getElementById('approvalBody').innerHTML = rows.length
+    ? rows.map(r => `<tr data-rownum="data-${r.row}" class="${r.who ? 'assignedRow' : ''} ${r.approved ? 'approvedRow' : ''}">
+        <td><b>${esc(r.number)}</b></td>
+        <td>${esc(r.date)}</td>
+        <td>${esc(r.customer)}</td>
+        <td>${linesHtml(r.product)}</td>
+        <td>${linesHtml(r.description)}</td>
+        <td class="num">${r.metres.toFixed(2)}</td>
+        <td>${categorySelectHtml(r,'data')}</td>
+        <td id="whoCell-data-${r.row}">${whoEditorHtml(r,'data')}</td>
+        <td style="display:flex;flex-direction:column;gap:4px">
+          <button class="btn warn small" onclick="openSplit('${r.row}', 'data')">Split</button>
+          <button class="btn small" onclick="openMove('${r.row}')">Move</button>
+        </td>
+        <td>${approvalCellHtml(r)}</td>
+        <td><button class="btn danger small" onclick="deleteRow('${r.row}')">Delete</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="11" class="empty">No transactions match.</td></tr>';
+}
+
+/* =========================================================
+   Split (shared by both pages)
+   ========================================================= */
+function openSplit(row, monthField){
+  splitRow = row;
+  const ctx = contextFor(monthField);
+  const r = ctx.data.rows.find(x=>x.row===row);
+  splitSource = r.sourceLines || [];
+  document.getElementById('splitIntro').textContent = r.number + ' · ' + r.customer + ' · ' + r.metres.toFixed(2) + 'm';
+  document.getElementById('splitModal').dataset.monthfield = monthField;
+  renderSplitLines();
+  document.getElementById('splitRows').innerHTML = '';
+  addSplitRow();
+  addSplitRow();
+  document.getElementById('splitModal').classList.remove('hidden');
+}
+function closeSplit(){ document.getElementById('splitModal').classList.add('hidden'); }
+function renderSplitLines(){
+  const el = document.getElementById('splitLines');
+  if(!splitSource.length){
+    el.innerHTML = '<div class="linebox"><b>No original QBO line details are stored for this invoice.</b><div class="status">You can still split by entering metre amounts below; they must add up to the invoice total.</div></div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-weight:800;margin:10px 0 6px">Invoice line items</div>' + splitSource.map(x =>
+    `<div class="linebox"><b>${esc(x.product||'Unspecified product')}</b> — ${esc(x.description||'')} <span style="float:right;font-weight:800">${Number(x.quantity||0).toFixed(2)}m</span></div>`
+  ).join('');
+}
+function splitEmployeeOptionsHtml(cat, selected){
+  const sel = selected || [];
+  return eligibleEmployeeNames(cat).map(n=>
+    `<label class="splitEmp"><input type="checkbox" class="splitEmployee" value="${esc(n)}" ${sel.includes(n)?'checked':''} onchange="onSplitEmployeeChange(this)"> ${esc(n)}</label>`
+  ).join('') +
+  `<label class="splitEmp noOneOpt"><input type="checkbox" class="splitEmployee" value="No One" ${sel.includes('No One')?'checked':''} onchange="onSplitEmployeeChange(this)"> No One</label>`;
+}
+function onSplitEmployeeChange(cb){
+  const box = cb.closest('.splitEmployees');
+  if(cb.value === 'No One'){
+    if(cb.checked) box.querySelectorAll('.splitEmployee').forEach(x=>{ if(x!==cb) x.checked=false; });
+  } else if(cb.checked){
+    const no = box.querySelector('.splitEmployee[value="No One"]');
+    if(no) no.checked = false;
+  }
+}
+function onSplitCategoryChange(sel){
+  const rowEl = sel.closest('.splitRow');
+  const cat = sel.value;
+  const chosen = [...rowEl.querySelectorAll('.splitEmployee:checked')].map(x=>x.value);
+  const eligible = eligibleEmployeeNames(cat);
+  const keep = chosen.filter(n => n==='No One' || eligible.includes(n));
+  rowEl.querySelector('.splitEmployees').innerHTML = splitEmployeeOptionsHtml(cat, keep);
+}
+function addSplitRow(){
+  const wrap = document.getElementById('splitRows');
+  const monthField = document.getElementById('splitModal').dataset.monthfield;
+  const ctx = contextFor(monthField);
+  const cat = ctx.data.rows.find(x=>x.row===splitRow)?.category || '';
+  const div = document.createElement('div');
+  div.className = 'splitRow';
+  div.innerHTML = `<div class="grid2">
+      <div><label>Category for this split</label><select class="splitCategory" onchange="onSplitCategoryChange(this)">${
+        ['','Decor','Fashion','Wallpaper'].map(x=>`<option value="${esc(x)}" ${cat===x?'selected':''}>${x?esc(x):'— unassigned —'}</option>`).join('')
+      }</select></div>
+      <div style="display:flex;align-items:flex-end;justify-content:flex-end"><button class="btn danger small" onclick="this.closest('.splitRow').remove()">Remove</button></div>
+    </div>
+    <div style="margin-top:10px"><label>Who gets commission for this split</label><div class="splitEmployees">${splitEmployeeOptionsHtml(cat, [])}</div></div>
+    <div style="margin-top:10px"><label>Description (editable for this split)</label><textarea class="splitDescription" style="min-height:60px"></textarea></div>
+    <div class="splitItems">${
+      splitSource.length
+        ? splitSource.map((x,i)=>`<label class="splitItem"><input type="checkbox" class="splitLine" value="${i}"> ${esc(x.product||'Line '+(i+1))} — ${esc(x.description||'')} (${Number(x.quantity||0).toFixed(2)}m)</label>`).join('')
+        : `<div style="width:100%"><label>Metres for this split</label><input class="splitMetres" type="number" min="0" step="0.01"></div>`
+    }</div>`;
+  wrap.appendChild(div);
+}
+async function saveSplit(){
+  const monthField = document.getElementById('splitModal').dataset.monthfield;
+  const ctx = contextFor(monthField);
+  const month = document.getElementById(ctx.monthSelectId).value;
+  const r = ctx.data.rows.find(x=>x.row===splitRow);
+  const splitEls = [...document.querySelectorAll('#splitRows .splitRow')];
+  const splits = splitEls.map(el => {
+    const employee = [...el.querySelectorAll('.splitEmployee:checked')].map(x=>x.value);
+    const category = el.querySelector('.splitCategory').value;
+    if(splitSource.length){
+      return { employee, category, lineIndexes: [...el.querySelectorAll('.splitLine:checked')].map(x=>Number(x.value)), description: el.querySelector('.splitDescription').value };
+    }
+    return { employee, category, metres: Number(el.querySelector('.splitMetres').value)||0, description: el.querySelector('.splitDescription').value };
+  });
+  if(splits.some(x=>!x.employee.length)){ toast('Choose who gets commission for each split'); return; }
+  if(splitSource.length && splits.some(x=>!x.lineIndexes.length)){ toast('Each split must have at least one invoice line'); return; }
+  if(!splitSource.length){
+    const total = splits.reduce((s,x)=>s+x.metres,0);
+    if(Math.abs(total - r.metres) > 0.01){ toast('Split metres must add up to ' + r.metres.toFixed(2) + 'm'); return; }
+  }
+  if(splits.length < 2){ toast('Add at least two split lines'); return; }
+  try{
+    const updated = await call('splitTransaction', month, splitRow, splits);
+    ctx.data.rows = updated.rows;
+    ctx.data.pending = updated.pending;
+    ctx.data.toApprove = updated.toApprove;
+    closeSplit();
+    ctx.rerender();
+    ctx.badge(ctx.data);
+    toast('Transaction split successfully');
+  }catch(e){
+    toast('Error: ' + (e.message || e));
+  }
+}
+
+/* =========================================================
+   Move (Commission Data only)
+   ========================================================= */
+function openMove(row){
+  moveRow = row;
+  const r = STATE.monthData.rows.find(x=>x.row===row);
+  document.getElementById('moveIntro').textContent = r.number + ' · ' + r.customer + ' · ' + r.metres.toFixed(2) + 'm — currently in ' + currentMonth();
+  const otherMonths = STATE.months.filter(m => m !== currentMonth());
+  fillSelect('moveExistingPeriod', otherMonths);
+  document.getElementById('moveExistingPeriod').innerHTML = '<option value="">— choose —</option>' + otherMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
+  setupPeriodYears('moveNewMonth','moveNewYear');
+  document.getElementById('moveStatus').textContent = '';
+  document.getElementById('moveModal').classList.remove('hidden');
+}
+function closeMove(){ document.getElementById('moveModal').classList.add('hidden'); }
+async function confirmMove(){
+  const existing = document.getElementById('moveExistingPeriod').value;
+  const toMonth = existing || (document.getElementById('moveNewMonth').value + ' ' + document.getElementById('moveNewYear').value);
+  const statusEl = document.getElementById('moveStatus');
+  try{
+    statusEl.textContent = 'Moving...';
+    const result = await call('moveTransaction', currentMonth(), toMonth, moveRow);
+    const from = currentMonth();
+    STATE.monthData = result.from;
+    STATE.months = result.months;
+    fillSelect('approvalMonth', STATE.months);
+    document.getElementById('approvalMonth').value = from;
+    fillSelect('homeMonth', STATE.months);
+    closeMove();
+    renderApproval();
+    updateApprovalBadge(STATE.monthData);
+    toast('Moved to ' + toMonth);
+  }catch(e){
+    statusEl.textContent = 'Error: ' + (e.message || e);
+  }
+}
+
+/* =========================================================
+   Reports
+   ========================================================= */
+function initReportsTab(){
+  fillSelect('reportMonth', STATE.months);
+  fillSelect('reportEmployee', STATE.employees.filter(e=>e.active).map(e=>e.name));
+  const reportMonthEl = document.getElementById('reportMonth');
+  if(!reportMonthEl.value && STATE.selectedMonth) reportMonthEl.value = STATE.selectedMonth;
+  loadReport();
+}
+async function loadReport(){
+  const month = document.getElementById('reportMonth').value;
+  const employee = document.getElementById('reportEmployee').value;
+  const pdfBtn = document.getElementById('pdfBtn');
+  document.getElementById('pdfStatus').textContent = '';
+  if(!month || !employee){
+    document.getElementById('reportBody').innerHTML = '<p class="empty">Choose a period and employee above.</p>';
+    pdfBtn.disabled = true;
+    return;
+  }
+  try{
+    const report = await call('getReport', month, employee);
+    renderReport(report);
+    pdfBtn.disabled = false;
+  }catch(e){
+    document.getElementById('reportBody').innerHTML = '<p class="empty">' + esc(e.message || e) + '</p>';
+    pdfBtn.disabled = true;
+  }
+}
+function renderReport(r){
+  const cats = r.categories.map(c => `
+    <div class="reportCat" style="border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px">
+      <h4 style="margin:0 0 8px">${esc(c.category)}${c.enabled ? '' : ' <span style="color:var(--muted);font-weight:400;font-size:12px">(not eligible)</span>'}</h4>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span>Total metres</span><span>${c.metres.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:var(--muted);font-style:italic"><span>Threshold: ${c.threshold.toFixed(2)}m · Rate: R${c.rate.toFixed(2)}/m</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0"><span>Qualifying metres</span><span>${c.qualifying.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;font-weight:800;border-top:1px solid var(--line);margin-top:6px"><span>Commission</span><span>R${c.commission.toFixed(2)}</span></div>
+    </div>`).join('');
+  document.getElementById('reportBody').innerHTML = cats + `
+    <div style="text-align:right;font-size:18px;font-weight:800;margin-top:6px">Total commission: R${r.totalCommission.toFixed(2)}</div>`;
+}
+async function generatePdf(){
+  const month = document.getElementById('reportMonth').value;
+  const employee = document.getElementById('reportEmployee').value;
+  const statusEl = document.getElementById('pdfStatus');
+  const btn = document.getElementById('pdfBtn');
+  try{
+    btn.disabled = true;
+    statusEl.textContent = 'Preparing report...';
+    const result = await call('createEmployeePdf', month, employee);
+    statusEl.textContent = 'Print dialog opened — choose "Save as PDF" and name it ' + result.fileName;
+  }catch(e){
+    statusEl.textContent = 'Failed: ' + (e.message || e);
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function init(){
+  try{
+    const data = await call('bootstrap');
+    STATE.employees = data.employees;
+    STATE.months = data.months;
+    fillSelect('approvalMonth', STATE.months);
+    fillSelect('homeMonth', STATE.months);
+    if(STATE.months.length){
+      STATE.selectedMonth = STATE.months[0];
+      document.getElementById('approvalMonth').value = STATE.months[0];
+      document.getElementById('homeMonth').value = STATE.months[0];
+    }
+    renderEmployees();
+    renderStructure();
+    renderPeriodList();
+    loadApprovalHome();
+  }catch(e){
+    toast('Failed to load: ' + (e.message || e));
+  }
+}
+boot();
+</script>
+</body>
+</html>
